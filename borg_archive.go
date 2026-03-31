@@ -33,7 +33,7 @@ func ParseBorgTimestamp(str string) (*time.Time, error) {
 		// try to parse the old format
 		t, err2 := time.ParseInLocation(layoutOld, str, time.Local)
 		if err2 != nil {
-			return nil, fmt.Errorf("unable to parse in either new or old format: %w", err1)
+			return nil, fmt.Errorf("parsing borg timestamp: %w", err1)
 		}
 		return &t, nil
 	}
@@ -46,13 +46,13 @@ func ParseBorgTimestamp(str string) (*time.Time, error) {
 func (ba *BorgArchive) ParseTimestamps() error {
 	t, err := ParseBorgTimestamp(ba.Start)
 	if err != nil {
-		return fmt.Errorf("unable to parse Start field: %w", err)
+		return fmt.Errorf("parsing BorgArchive.Start: %w", err)
 	}
 	ba.startT = *t
 
 	t, err = ParseBorgTimestamp(ba.Time)
 	if err != nil {
-		return fmt.Errorf("unable to parse Time field: %w", err)
+		return fmt.Errorf("parsing BorgArchive.Time: %w", err)
 	}
 	ba.timeT = *t
 

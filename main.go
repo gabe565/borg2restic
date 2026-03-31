@@ -37,8 +37,7 @@ func main() {
 		}),
 	))
 
-	err := run()
-	if err != nil {
+	if err := run(); err != nil {
 		slog.Error(err.Error())
 	}
 }
@@ -51,9 +50,8 @@ func run() error {
 	br := &BorgRepo{}
 
 	slog.Info("Listing borg archives")
-	err := br.LoadBorgArchives(ctx)
-	if err != nil {
-		return fmt.Errorf("error loading borg archives: %w", err)
+	if err := br.LoadBorgArchives(ctx); err != nil {
+		return fmt.Errorf("listing borg archives: %w", err)
 	}
 
 	slog.Info("Found archives", "count", len(br.Archives))
@@ -61,7 +59,7 @@ func run() error {
 	// prepare temporary folder to mount repo into
 	mountDir, err := os.MkdirTemp("", "borg2restic")
 	if err != nil {
-		return fmt.Errorf("unable to create temporary folder: %v", err)
+		return fmt.Errorf("creating temporary folder: %v", err)
 	}
 	defer func() {
 		_ = os.RemoveAll(mountDir)
@@ -69,9 +67,8 @@ func run() error {
 
 	// mount repo to a temporary folder
 	slog.Info("Mounting borg repo", "path", mountDir)
-	err = br.Mount(ctx, mountDir)
-	if err != nil {
-		return fmt.Errorf("unable to mount repo to %v: %w", mountDir, err)
+	if err := br.Mount(ctx, mountDir); err != nil {
+		return fmt.Errorf("mounting repo to %v: %w", mountDir, err)
 	}
 
 	defer func() {
@@ -127,9 +124,8 @@ func run() error {
 
 		bar.Describe(fmt.Sprintf("Importing Archive %v (%v+)", archive.Archive, args))
 
-		err = cmd.Run()
-		if err != nil {
-			return fmt.Errorf("error running restic: %v", err)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("running restic: %v", err)
 		}
 	}
 
@@ -138,9 +134,8 @@ func run() error {
 
 	slog.Info("Unmounting repo")
 
-	err = br.Unmount(unmountCtx)
-	if err != nil {
-		return fmt.Errorf("unable to unmount repo: %w", err)
+	if err := br.Unmount(unmountCtx); err != nil {
+		return fmt.Errorf("unmounting repo: %w", err)
 	}
 
 	return nil

@@ -23,20 +23,17 @@ func (br *BorgRepo) LoadBorgArchives(ctx context.Context) error {
 	var out bytes.Buffer
 	cmd.Stdout = &out
 
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("unable to run borg list: %w", err)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("running borg list: %w", err)
 	}
 
-	err = json.Unmarshal(out.Bytes(), &br)
-	if err != nil {
-		return fmt.Errorf("unable to serialize borg list output: %w", err)
+	if err := json.Unmarshal(out.Bytes(), &br); err != nil {
+		return fmt.Errorf("parsing borg list output: %w", err)
 	}
 
 	for _, borgArchive := range br.Archives {
-		err := borgArchive.ParseTimestamps()
-		if err != nil {
-			return fmt.Errorf("unable to parse timestamps for archive %v: %w", borgArchive.ID, err)
+		if err := borgArchive.ParseTimestamps(); err != nil {
+			return fmt.Errorf("parsing timestamps for archive %v: %w", borgArchive.ID, err)
 		}
 	}
 
