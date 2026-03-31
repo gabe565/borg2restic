@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -81,24 +80,13 @@ func run() error {
 		_ = br.Unmount(ctx)
 	}()
 
-	// filter out archives not matching the prefix
-	filteredArchives := []*BorgArchive{}
-
-	// loop over all archives
-	for _, archive := range br.Archives {
-		// if the archive name matches the prefix, add to list
-		if strings.HasPrefix(archive.Name, cli.ArchivePrefix) {
-			filteredArchives = append(filteredArchives, archive)
-		}
-	}
-
 	// initialize progressbar
-	bar := progressbar.Default(int64(len(filteredArchives)))
+	bar := progressbar.Default(int64(len(br.Archives)))
 
-	for i, archive := range filteredArchives {
+	for archive := range br.FilterArchives(cli.ArchivePrefix) {
 		_ = bar.Clear()
 		slog.Info("Migrating archive", "name", archive.Archive)
-		_ = bar.Set(i)
+		_ = bar.Add(1)
 
 		archiveDir := filepath.Join(mountDir, archive.Name)
 

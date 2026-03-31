@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"os"
+	"strings"
 )
 
 type BorgRepo struct {
@@ -78,4 +80,18 @@ func (br *BorgRepo) Unmount(ctx context.Context) error {
 	br.mountPoint = ""
 
 	return nil
+}
+
+func (br *BorgRepo) FilterArchives(prefix string) iter.Seq[*BorgArchive] {
+	return func(yield func(*BorgArchive) bool) {
+		for _, archive := range br.Archives {
+			if archive == nil || !strings.HasPrefix(archive.Name, prefix) {
+				continue
+			}
+
+			if !yield(archive) {
+				return
+			}
+		}
+	}
 }

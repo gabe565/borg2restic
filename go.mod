@@ -1,6 +1,6 @@
 module github.com/flokli/borg2restic
 
-go 1.21
+go 1.26.1
 
 require (
 	github.com/alecthomas/kong v0.6.1
