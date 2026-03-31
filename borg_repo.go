@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -20,15 +19,25 @@ type BorgRepo struct {
 func (br *BorgRepo) LoadBorgArchives(ctx context.Context) error {
 	// obtain a listing of the repo
 	cmd := execCmd(ctx, "borg", "list", "--json")
-	var out bytes.Buffer
-	cmd.Stdout = &out
 
-	if err := cmd.Run(); err != nil {
+	cmd.Stdout = nil
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("setting up pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("running borg list: %w", err)
 	}
 
-	if err := json.Unmarshal(out.Bytes(), &br); err != nil {
-		return fmt.Errorf("parsing borg list output: %w", err)
+	jsonErr := json.NewDecoder(out).Decode(&br)
+
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("borg list failed: %w", err)
+	}
+
+	if jsonErr != nil {
+		return fmt.Errorf("parsing borg list output: %w", jsonErr)
 	}
 
 	for _, borgArchive := range br.Archives {
