@@ -65,7 +65,7 @@ func (br *BorgRepo) Unmount(ctx context.Context) error {
 		return err
 	}
 
-	cmd := execCmd(ctx, "fusermount", "-u", br.mountPoint)
+	cmd := execCmd(ctx, "borg", "umount", br.mountPoint)
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("unmounting repo: %w", err)
