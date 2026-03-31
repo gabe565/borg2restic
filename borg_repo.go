@@ -2,10 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
 )
 
 type BorgRepo struct {
@@ -14,11 +13,9 @@ type BorgRepo struct {
 	mountPoint string
 }
 
-func (br *BorgRepo) LoadBorgArchives() error {
+func (br *BorgRepo) LoadBorgArchives(ctx context.Context) error {
 	// obtain a listing of the repo
-	cmd := exec.Command("borg", "list", "--json")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd := execCmd(ctx, "borg", "list", "--json")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 
@@ -45,15 +42,13 @@ func (br *BorgRepo) LoadBorgArchives() error {
 // Mount mounts an repo at the chosen destination path
 // archiveName can be left to the empty string, in that case,
 // a listing of all archives is provided at the root of the mount
-func (br *BorgRepo) Mount(dest string) error {
+func (br *BorgRepo) Mount(ctx context.Context, dest string) error {
 	if br.mountPoint != "" {
 		return fmt.Errorf("already mounted at %v", br.mountPoint)
 	}
 
 	args := []string{"mount", "-o", "ignore_permissions", "::", dest}
-	cmd := exec.Command("borg", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd := execCmd(ctx, "borg", args...)
 	fmt.Printf("%+v", args)
 
 	br.mountPoint = dest
@@ -62,13 +57,11 @@ func (br *BorgRepo) Mount(dest string) error {
 }
 
 // Unmount does unmount the repo.
-func (br *BorgRepo) Unmount() error {
+func (br *BorgRepo) Unmount(ctx context.Context) error {
 	if br.mountPoint == "" {
 		return fmt.Errorf("nothing mounted")
 	}
 
-	cmd := exec.Command("fusermount", "-u", br.mountPoint)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd := execCmd(ctx, "fusermount", "-u", br.mountPoint)
 	return cmd.Run()
 }

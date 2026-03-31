@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/alecthomas/kong"
 	"github.com/schollz/progressbar/v3"
@@ -33,9 +35,12 @@ func main() {
 }
 
 func run() error {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
 	// open borg repo
 	br := &BorgRepo{}
-	err := br.LoadBorgArchives()
+	err := br.LoadBorgArchives(ctx)
 	if err != nil {
 		return fmt.Errorf("error loading borg archives: %w", err)
 	}
@@ -45,15 +50,21 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("unable to create temporary folder: %v", err)
 	}
-	defer os.RemoveAll(mountDir)
+	defer func() {
+		_ = os.RemoveAll(mountDir)
+	}()
 
 	// mount repo to a temporary folder
-	err = br.Mount(mountDir)
+	err = br.Mount(ctx, mountDir)
 	if err != nil {
 		return fmt.Errorf("unable to mount repo to %v: %w", mountDir, err)
 	}
 
-	defer br.Unmount() // nolint: errcheck
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_ = br.Unmount(ctx)
+	}()
 
 	fmt.Printf("mounted at %v\n", mountDir)
 
@@ -109,9 +120,7 @@ func run() error {
 		args = append(args, ".")
 
 		// prepare command
-		cmd := exec.Command("restic", args...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd := execCmd(ctx, "restic", args...)
 		cmd.Dir = archiveDir
 		if cli.SubPath != "" {
 			cmd.Dir = filepath.Join(archiveDir, cli.SubPath)
@@ -125,7 +134,10 @@ func run() error {
 		}
 	}
 
-	err = br.Unmount()
+	unmountCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	err = br.Unmount(unmountCtx)
 	if err != nil {
 		return err
 	}
