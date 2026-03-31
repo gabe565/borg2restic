@@ -51,10 +51,7 @@ func (br *BorgRepo) Mount(ctx context.Context, dest string) error {
 
 	args := []string{"mount", "-o", "ignore_permissions", "::", dest}
 	cmd := execCmd(ctx, "borg", args...)
-	fmt.Printf("%+v", args)
-
 	br.mountPoint = dest
-
 	return cmd.Run()
 }
 

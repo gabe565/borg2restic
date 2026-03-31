@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
+	"github.com/lmittmann/tint"
+	"github.com/mattn/go-isatty"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -28,9 +30,17 @@ func main() {
 		kong.UsageOnError(),
 	)
 
+	slog.SetDefault(slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.TimeOnly,
+			NoColor:    !(isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd())),
+		}),
+	))
+
 	err := run()
 	if err != nil {
-		log.Fatal(err)
+		slog.Error(err.Error())
 	}
 }
 
@@ -40,10 +50,14 @@ func run() error {
 
 	// open borg repo
 	br := &BorgRepo{}
+
+	slog.Info("Listing borg archives")
 	err := br.LoadBorgArchives(ctx)
 	if err != nil {
 		return fmt.Errorf("error loading borg archives: %w", err)
 	}
+
+	slog.Info("Found archives", "count", len(br.Archives))
 
 	// prepare temporary folder to mount repo into
 	mountDir, err := os.MkdirTemp("", "borg2restic")
@@ -55,6 +69,7 @@ func run() error {
 	}()
 
 	// mount repo to a temporary folder
+	slog.Info("Mounting borg repo", "path", mountDir)
 	err = br.Mount(ctx, mountDir)
 	if err != nil {
 		return fmt.Errorf("unable to mount repo to %v: %w", mountDir, err)
@@ -65,8 +80,6 @@ func run() error {
 		defer cancel()
 		_ = br.Unmount(ctx)
 	}()
-
-	fmt.Printf("mounted at %v\n", mountDir)
 
 	// filter out archives not matching the prefix
 	filteredArchives := []*BorgArchive{}
@@ -83,11 +96,9 @@ func run() error {
 	bar := progressbar.Default(int64(len(filteredArchives)))
 
 	for i, archive := range filteredArchives {
-
-		err := bar.Set(i)
-		if err != nil {
-			return fmt.Errorf("error setting bar to %v: %w", i, err)
-		}
+		_ = bar.Clear()
+		slog.Info("Migrating archive", "name", archive.Archive)
+		_ = bar.Set(i)
 
 		archiveDir := filepath.Join(mountDir, archive.Name)
 
@@ -130,16 +141,18 @@ func run() error {
 
 		err = cmd.Run()
 		if err != nil {
-			return err
+			return fmt.Errorf("error running restic: %v", err)
 		}
 	}
 
 	unmountCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	slog.Info("Unmounting repo")
+
 	err = br.Unmount(unmountCtx)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to unmount repo: %w", err)
 	}
 
 	return nil
