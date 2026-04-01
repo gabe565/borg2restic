@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 )
 
 type BorgRepo struct {
@@ -62,6 +64,21 @@ func (br *BorgRepo) Unmount(ctx context.Context) error {
 		return fmt.Errorf("nothing mounted")
 	}
 
+	if _, err := os.Stat(br.mountPoint); errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+
 	cmd := execCmd(ctx, "fusermount", "-u", br.mountPoint)
-	return cmd.Run()
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("unmounting repo: %w", err)
+	}
+
+	if err := os.Remove(br.mountPoint); err != nil {
+		return fmt.Errorf("removing mount point: %w", err)
+	}
+
+	br.mountPoint = ""
+
+	return nil
 }
