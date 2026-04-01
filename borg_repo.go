@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"iter"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -58,7 +59,11 @@ func (br *BorgRepo) Mount(ctx context.Context, dest string) error {
 		return fmt.Errorf("already mounted at %v", br.mountPoint)
 	}
 
-	args := []string{"mount", "-o", "ignore_permissions", "::", dest}
+	uid := os.Getuid()
+	gid := os.Getgid()
+	permOpt := "uid=" + strconv.Itoa(uid) + ",gid=" + strconv.Itoa(gid)
+
+	args := []string{"mount", "-o", permOpt, "::", dest}
 	cmd := execCmd(ctx, "borg", args...)
 	br.mountPoint = dest
 
