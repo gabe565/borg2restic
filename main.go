@@ -98,7 +98,7 @@ func run() error {
 		cli.ResticOpts = append(cli.ResticOpts, ".")
 	}
 
-	bar := progressbar.Default(int64(len(br.Archives)))
+	bar := progressbar.Default(int64(br.FilterCount(cli.ArchivePrefix, cli.Before, cli.After)))
 	errs := make([]error, 0, len(br.Archives))
 
 	for archive := range br.FilterArchives(cli.ArchivePrefix, cli.Before, cli.After) {
