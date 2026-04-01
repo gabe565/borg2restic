@@ -115,15 +115,16 @@ func (br *BorgRepo) Unmount(ctx context.Context) error {
 	return nil
 }
 
-func (br *BorgRepo) FilterArchives(prefix string) iter.Seq[*BorgArchive] {
+func (br *BorgRepo) FilterArchives(prefix string, before, after time.Time) iter.Seq[*BorgArchive] {
 	return func(yield func(*BorgArchive) bool) {
 		for _, archive := range br.Archives {
-			if archive == nil || !strings.HasPrefix(archive.Name, prefix) {
-				continue
-			}
-
-			if !yield(archive) {
-				return
+			if archive != nil &&
+				strings.HasPrefix(archive.Name, prefix) &&
+				(after.IsZero() || archive.GetStartTime().After(after)) &&
+				(before.IsZero() || archive.GetStartTime().Before(before)) {
+				if !yield(archive) {
+					return
+				}
 			}
 		}
 	}
