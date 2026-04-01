@@ -22,16 +22,16 @@ type BorgArchive struct {
 func ParseBorgTimestamp(str string) (*time.Time, error) {
 	// borg format seems to be 2022-08-12T21:19:37.878526+02:00
 	// (as per https://github.com/borgbackup/borg/pull/6964#issuecomment-1213444009)
-	layoutNew := "2006-01-02T15:04:05.000000-07:00"
+	const LayoutNew = "2006-01-02T15:04:05.000000-07:00"
 
 	// The old format is 2016-06-01T00:00:00.000000
-	layoutOld := "2006-01-02T15:04:05.000000"
+	const LayoutOld = "2006-01-02T15:04:05.000000"
 
 	// try to parse the new format
-	t, err1 := time.ParseInLocation(layoutNew, str, time.Local)
+	t, err1 := time.ParseInLocation(LayoutNew, str, time.Local)
 	if err1 != nil {
 		// try to parse the old format
-		t, err2 := time.ParseInLocation(layoutOld, str, time.Local)
+		t, err2 := time.ParseInLocation(LayoutOld, str, time.Local)
 		if err2 != nil {
 			return nil, fmt.Errorf("parsing borg timestamp: %w", err1)
 		}
