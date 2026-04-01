@@ -19,9 +19,9 @@ import (
 )
 
 var cli struct {
-	ArchivePrefix string   `help:"Archive prefix to filter against"`
-	SubPath       string   `help:"Path inside each archive to cd into before staring backup"`
-	Hostname      string   `help:"Hostname to set for all matching archives. Keep unset to use real hostname"`
+	ArchivePrefix string   `short:"p" help:"Archive prefix to filter against"`
+	SubPath       string   `short:"s" help:"Path inside each archive to cd into before staring backup"`
+	Hostname      string   `short:"H" help:"Hostname to set for all matching archives. Keep unset to use real hostname"`
 	ResticOpts    []string `arg:"" optional:"" passthrough:"partial"`
 }
 
