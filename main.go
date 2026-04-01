@@ -110,7 +110,6 @@ func run() error {
 		// Example: restic backup --force -H tp --time "2016-11-04 00:00:00" --set-path / .
 		args := append([]string{
 			"backup",
-			"--force",
 			"--time=" + archive.GetStartTime().Format("2006-01-02 15:04:05"),
 		}, cli.ResticOpts...)
 
