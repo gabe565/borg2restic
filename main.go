@@ -80,12 +80,15 @@ func run() error {
 		_ = br.Unmount(ctx)
 	}()
 
-	if len(cli.ResticOpts) != 0 && cli.ResticOpts[0] == "--" {
-		cli.ResticOpts = cli.ResticOpts[1:]
+	if cli.Hostname != "" {
+		const hostEnv = "RESTIC_HOST"
+		if err := os.Setenv(hostEnv, cli.Hostname); err != nil {
+			return fmt.Errorf("setting "+hostEnv+": %w", err)
+		}
 	}
 
-	if cli.Hostname != "" {
-		cli.ResticOpts = append(cli.ResticOpts, "--host="+cli.Hostname)
+	if len(cli.ResticOpts) != 0 && cli.ResticOpts[0] == "--" {
+		cli.ResticOpts = cli.ResticOpts[1:]
 	}
 
 	if !slices.Contains(cli.ResticOpts, "--stdin-from-command") && !slices.Contains(cli.ResticOpts, "--stdin") {
