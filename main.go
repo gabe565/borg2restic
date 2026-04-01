@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -77,8 +79,8 @@ func run() error {
 		_ = br.Unmount(ctx)
 	}()
 
-	// initialize progressbar
 	bar := progressbar.Default(int64(len(br.Archives)))
+	errs := make([]error, 0, len(br.Archives))
 
 	for archive := range br.FilterArchives(cli.ArchivePrefix) {
 		_ = bar.Clear()
@@ -122,10 +124,12 @@ func run() error {
 			cmd.Dir = filepath.Join(archiveDir, cli.SubPath)
 		}
 
-		bar.Describe(fmt.Sprintf("Importing Archive %v (%v+)", archive.Archive, args))
-
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("running restic: %v", err)
+			slog.Error("Restic backup failed", "error", err)
+			errs = append(errs, fmt.Errorf("archive %q: %w", archive.Archive, err))
+			if errors.Is(err, context.Canceled) || strings.HasPrefix(err.Error(), "signal: ") {
+				break
+			}
 		}
 	}
 
@@ -138,5 +142,9 @@ func run() error {
 		return fmt.Errorf("unmounting repo: %w", err)
 	}
 
+	if len(errs) != 0 {
+		errs = append([]error{errors.New("archives failed")}, errs...)
+		return errors.Join(errs...)
+	}
 	return nil
 }
