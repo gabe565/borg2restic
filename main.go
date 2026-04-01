@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -18,9 +19,10 @@ import (
 )
 
 var cli struct {
-	ArchivePrefix string `help:"Archive prefix to filter against"`
-	SubPath       string `help:"Path inside each archive to cd into before staring backup"`
-	Hostname      string `help:"Hostname to set for all matching archives. Keep unset to use real hostname"`
+	ArchivePrefix string   `help:"Archive prefix to filter against"`
+	SubPath       string   `help:"Path inside each archive to cd into before staring backup"`
+	Hostname      string   `help:"Hostname to set for all matching archives. Keep unset to use real hostname"`
+	ResticOpts    []string `arg:"" optional:"" passthrough:"partial"`
 }
 
 func main() {
@@ -78,6 +80,19 @@ func run() error {
 		_ = br.Unmount(ctx)
 	}()
 
+	if len(cli.ResticOpts) != 0 && cli.ResticOpts[0] == "--" {
+		cli.ResticOpts = cli.ResticOpts[1:]
+	}
+
+	if cli.Hostname != "" {
+		cli.ResticOpts = append(cli.ResticOpts, "--host="+cli.Hostname)
+	}
+
+	if !slices.Contains(cli.ResticOpts, "--stdin-from-command") && !slices.Contains(cli.ResticOpts, "--stdin") {
+		// we backup ".", and set cmd.Dir appropriately
+		cli.ResticOpts = append(cli.ResticOpts, ".")
+	}
+
 	bar := progressbar.Default(int64(len(br.Archives)))
 	errs := make([]error, 0, len(br.Archives))
 
@@ -90,23 +105,11 @@ func run() error {
 
 		// assemble restic backup command
 		// Example: restic backup --force -H tp --time "2016-11-04 00:00:00" --set-path / .
-		args := []string{"backup", "--force"}
-
-		// set hostname if set
-		if cli.Hostname != "" {
-			args = append(args, "-H", cli.Hostname)
-		}
-
-		// set time from repo time
-		args = append(args,
-			"--time",
-			// restic wants this date format:
-			// 2006-01-02 15:04:05
-			archive.GetStartTime().Format("2006-01-02 15:04:05"),
-		)
-
-		// we backup ".", and set cmd.Dir appropriately
-		args = append(args, ".")
+		args := append([]string{
+			"backup",
+			"--force",
+			"--time=" + archive.GetStartTime().Format("2006-01-02 15:04:05"),
+		}, cli.ResticOpts...)
 
 		// prepare command
 		cmd := execCmd(ctx, "restic", args...)
