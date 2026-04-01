@@ -21,7 +21,6 @@ var cli struct {
 	ArchivePrefix string `help:"Archive prefix to filter against"`
 	SubPath       string `help:"Path inside each archive to cd into before staring backup"`
 	Hostname      string `help:"Hostname to set for all matching archives. Keep unset to use real hostname"`
-	SetPath       string `help:"Optionally override path (via restic --set-path)"`
 }
 
 func main() {
@@ -105,14 +104,6 @@ func run() error {
 			// 2006-01-02 15:04:05
 			archive.GetStartTime().Format("2006-01-02 15:04:05"),
 		)
-
-		// set path if setPath is set
-		if cli.SetPath != "" {
-			args = append(args,
-				"--set-path",
-				cli.SetPath,
-			)
-		}
 
 		// we backup ".", and set cmd.Dir appropriately
 		args = append(args, ".")
