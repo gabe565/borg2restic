@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -68,9 +69,10 @@ func (ba *BorgArchive) GetTimeTime() time.Time {
 	return ba.timeT
 }
 
-func (ba *BorgArchive) Filter(prefix string, before, after time.Time) bool {
+func (ba *BorgArchive) Filter(prefix string, re *regexp.Regexp, before, after time.Time) bool {
 	return ba != nil &&
 		strings.HasPrefix(ba.Name, prefix) &&
 		(after.IsZero() || ba.GetStartTime().Before(before)) &&
-		(before.IsZero() || ba.GetStartTime().After(after))
+		(before.IsZero() || ba.GetStartTime().After(after)) &&
+		(re == nil || re.MatchString(ba.Name))
 }

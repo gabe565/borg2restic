@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -19,12 +20,13 @@ import (
 )
 
 var cli struct {
-	ArchivePrefix string    `short:"p" help:"Archive prefix to filter against"`
-	Before        time.Time `short:"b" help:"Only migrate archives older than this time"`
-	After         time.Time `short:"a" help:"Only migrate archives newer than this time"`
-	SubPath       string    `short:"s" help:"Path inside each archive to cd into before staring backup"`
-	Hostname      string    `short:"H" help:"Hostname to set for all matching archives. Keep unset to use real hostname"`
-	ResticOpts    []string  `arg:"" optional:"" passthrough:"partial"`
+	NamePrefix string    `short:"p" help:"Filter archives by a prefix"`
+	NameRegex  string    `short:"r" help:"Filter archives by an anchored regular expression"`
+	Before     time.Time `short:"b" help:"Only migrate archives older than this time"`
+	After      time.Time `short:"a" help:"Only migrate archives newer than this time"`
+	SubPath    string    `short:"s" help:"Path inside each archive to cd into before staring backup"`
+	Hostname   string    `short:"H" help:"Hostname to set for all matching archives. Keep unset to use real hostname"`
+	ResticOpts []string  `arg:"" optional:"" passthrough:"partial"`
 }
 
 func main() {
@@ -98,10 +100,15 @@ func run() error {
 		cli.ResticOpts = append(cli.ResticOpts, ".")
 	}
 
-	bar := progressbar.Default(int64(br.FilterCount(cli.ArchivePrefix, cli.Before, cli.After)))
+	var re *regexp.Regexp
+	if cli.NameRegex != "" {
+		re = regexp.MustCompile("^" + cli.NameRegex + "$")
+	}
+
+	bar := progressbar.Default(int64(br.FilterCount(cli.NamePrefix, re, cli.Before, cli.After)))
 	errs := make([]error, 0, len(br.Archives))
 
-	for archive := range br.FilterArchives(cli.ArchivePrefix, cli.Before, cli.After) {
+	for archive := range br.FilterArchives(cli.NamePrefix, re, cli.Before, cli.After) {
 		_ = bar.Clear()
 		slog.Info("Migrating archive", "name", archive.Archive)
 		_ = bar.Add(1)
