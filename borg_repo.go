@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"iter"
 	"os"
+	"regexp"
 	"strconv"
 	"time"
 )
@@ -114,18 +115,18 @@ func (br *BorgRepo) Unmount(ctx context.Context) error {
 	return nil
 }
 
-func (br *BorgRepo) FilterCount(prefix string, before, after time.Time) int {
+func (br *BorgRepo) FilterCount(prefix string, re *regexp.Regexp, before, after time.Time) int {
 	var count int
-	for range br.FilterArchives(prefix, before, after) {
+	for range br.FilterArchives(prefix, re, before, after) {
 		count++
 	}
 	return count
 }
 
-func (br *BorgRepo) FilterArchives(prefix string, before, after time.Time) iter.Seq[*BorgArchive] {
+func (br *BorgRepo) FilterArchives(prefix string, re *regexp.Regexp, before, after time.Time) iter.Seq[*BorgArchive] {
 	return func(yield func(*BorgArchive) bool) {
 		for _, archive := range br.Archives {
-			if archive.Filter(prefix, before, after) {
+			if archive.Filter(prefix, re, before, after) {
 				if !yield(archive) {
 					return
 				}
