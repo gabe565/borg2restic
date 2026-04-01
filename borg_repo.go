@@ -8,6 +8,7 @@ import (
 	"iter"
 	"os"
 	"strings"
+	"time"
 )
 
 type BorgRepo struct {
@@ -60,7 +61,28 @@ func (br *BorgRepo) Mount(ctx context.Context, dest string) error {
 	args := []string{"mount", "-o", "ignore_permissions", "::", dest}
 	cmd := execCmd(ctx, "borg", args...)
 	br.mountPoint = dest
-	return cmd.Run()
+
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	for {
+		entries, err := os.ReadDir(dest)
+		if err == nil && len(entries) != 0 {
+			break
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("waiting for borg mount to become ready: %w", ctx.Err())
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
+
+	return nil
 }
 
 // Unmount does unmount the repo.
