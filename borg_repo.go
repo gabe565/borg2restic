@@ -8,6 +8,7 @@ import (
 	"iter"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"time"
 )
@@ -126,7 +127,7 @@ func (br *BorgRepo) FilterCount(prefix string, re *regexp.Regexp, before, after 
 func (br *BorgRepo) FilterArchives(prefix string, re *regexp.Regexp, before, after time.Time, daily bool) iter.Seq[*BorgArchive] {
 	return func(yield func(*BorgArchive) bool) {
 		seen := make(map[string]struct{})
-		for _, archive := range br.Archives {
+		for _, archive := range slices.Backward(br.Archives) {
 			if !archive.Filter(prefix, re, before, after) {
 				continue
 			}
