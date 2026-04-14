@@ -26,6 +26,7 @@ var cli struct {
 	After      time.Time `short:"a" help:"Only migrate archives newer than this time"`
 	SubPath    string    `short:"s" help:"Path inside each archive to cd into before staring backup"`
 	Hostname   string    `short:"H" help:"Hostname to set for all matching archives. Keep unset to use real hostname"`
+	Daily      bool      `short:"d" help:"Only migrate one archive per day (the first seen for each date). Useful for skipping hourly backups."`
 	ResticOpts []string  `arg:"" optional:"" passthrough:"partial"`
 }
 
@@ -105,10 +106,10 @@ func run() error {
 		re = regexp.MustCompile("^" + cli.NameRegex + "$")
 	}
 
-	bar := progressbar.Default(int64(br.FilterCount(cli.NamePrefix, re, cli.Before, cli.After)))
+	bar := progressbar.Default(int64(br.FilterCount(cli.NamePrefix, re, cli.Before, cli.After, cli.Daily)))
 	errs := make([]error, 0, len(br.Archives))
 
-	for archive := range br.FilterArchives(cli.NamePrefix, re, cli.Before, cli.After) {
+	for archive := range br.FilterArchives(cli.NamePrefix, re, cli.Before, cli.After, cli.Daily) {
 		_ = bar.Clear()
 		slog.Info("Migrating archive", "name", archive.Archive)
 		_ = bar.Add(1)

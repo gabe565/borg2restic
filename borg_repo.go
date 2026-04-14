@@ -115,21 +115,32 @@ func (br *BorgRepo) Unmount(ctx context.Context) error {
 	return nil
 }
 
-func (br *BorgRepo) FilterCount(prefix string, re *regexp.Regexp, before, after time.Time) int {
+func (br *BorgRepo) FilterCount(prefix string, re *regexp.Regexp, before, after time.Time, daily bool) int {
 	var count int
-	for range br.FilterArchives(prefix, re, before, after) {
+	for range br.FilterArchives(prefix, re, before, after, daily) {
 		count++
 	}
 	return count
 }
 
-func (br *BorgRepo) FilterArchives(prefix string, re *regexp.Regexp, before, after time.Time) iter.Seq[*BorgArchive] {
+func (br *BorgRepo) FilterArchives(prefix string, re *regexp.Regexp, before, after time.Time, daily bool) iter.Seq[*BorgArchive] {
 	return func(yield func(*BorgArchive) bool) {
+		seen := make(map[string]struct{})
 		for _, archive := range br.Archives {
-			if archive.Filter(prefix, re, before, after) {
-				if !yield(archive) {
-					return
+			if !archive.Filter(prefix, re, before, after) {
+				continue
+			}
+
+			if daily {
+				day := archive.GetStartTime().Format(time.DateOnly)
+				if _, ok := seen[day]; ok {
+					continue
 				}
+				seen[day] = struct{}{}
+			}
+
+			if !yield(archive) {
+				return
 			}
 		}
 	}
